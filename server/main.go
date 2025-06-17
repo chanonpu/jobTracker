@@ -15,12 +15,7 @@ func main() {
 	r := gin.Default()
 
 	//enable cors
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
-		AllowHeaders:     []string{"Origin", "Content-Type"},
-		AllowCredentials: true,
-	}))
+	r.Use(cors.Default())
 
 	routes.JobRoutes(r)
 
