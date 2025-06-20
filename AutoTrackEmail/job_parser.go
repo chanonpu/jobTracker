@@ -51,6 +51,29 @@ func extractTitleFromEmail(subject, body string) string {
 
 // extract company from subject
 func extractCompanyFromSubject(subject string) string {
+	// LinkedIn-specific patterns first
+	linkedInPatterns := []string{
+		`(?i)your application was sent to\s+(.+?)(?:\s*$|\s*\|)`,
+		`(?i)application sent.*?at\s+(.+?)(?:\s*$|\s*\|)`,
+		`(?i)(.+?):\s*your application`,
+		`(?i)application.*?to\s+(.+?)(?:\s+for|\s*$)`,
+		`(?i)thank you for applying to\s+(.+?)(?:\s+for|\s*$)`,
+	}
+
+	for _, pattern := range linkedInPatterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(subject)
+		if len(matches) > 1 {
+			company := strings.TrimSpace(matches[1])
+			// Clean up common suffixes
+			company = strings.TrimSuffix(company, " - LinkedIn")
+			company = strings.TrimSuffix(company, " via LinkedIn")
+			if len(company) > 1 && len(company) < 100 {
+				return company
+			}
+		}
+	}
+
 	// Common patterns for company names in email subjects
 	patterns := []string{
 		`(?i)from\s+([A-Za-z\s&.]+?)(?:\s+team|\s+careers|\s+hiring|$)`,
@@ -119,6 +142,7 @@ func extractCompanyFromBody(body string) string {
 
 // extract title from subject
 func extractTitleFromSubject(subject string) string {
+
 	// Common patterns for job titles
 	patterns := []string{
 		`(?i)for\s+the\s+([^-]+?)(?:\s+position|\s+role)`,
@@ -164,6 +188,53 @@ func extractTitleFromBody(body string) string {
 	}
 
 	lines := strings.Split(body, "\n")
+
+	// LinkedIn-specific logic: look for job title after company line
+	foundCompanyLine := false
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		// Remove markdown formatting
+		cleanLine := strings.ReplaceAll(line, "**", "")
+		cleanLine = strings.ReplaceAll(cleanLine, "*", "")
+		cleanLine = strings.TrimSpace(cleanLine)
+
+		// Check if this line contains "Your application was sent to"
+		if strings.Contains(strings.ToLower(cleanLine), "your application was sent to") {
+			foundCompanyLine = true
+			continue
+		}
+
+		// If we found the company line, the next non-empty line should be the job title
+		if foundCompanyLine && cleanLine != "" {
+			// Clean up the job title line - remove company name and location info
+			title := cleanLine
+
+			// Remove company name and location patterns
+			// Look for patterns like "Company Name · Location" or "Company Name - Location"
+			parts := strings.Split(title, "·")
+			if len(parts) > 1 {
+				title = strings.TrimSpace(parts[0])
+			}
+
+			parts = strings.Split(title, " - ")
+			if len(parts) > 1 && !strings.Contains(strings.ToLower(parts[1]), "developer") {
+				title = strings.TrimSpace(parts[0])
+			}
+
+			// Remove "Applied on" and date information
+			if strings.Contains(strings.ToLower(title), "applied on") {
+				continue
+			}
+
+			// Validate the title
+			if len(title) > 1 && len(title) < 100 && !isLocationOrDate(title) {
+				return title
+			}
+		}
+	}
+
+	// Fallback to general body parsing
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 
@@ -210,4 +281,29 @@ func determineJobStatus(subject string) string {
 
 	// Default status
 	return "applied"
+}
+
+// Helper function to check if a string looks like location or date info
+func isLocationOrDate(text string) bool {
+	textLower := strings.ToLower(text)
+
+	// Common location indicators
+	locationWords := []string{"toronto", "vancouver", "montreal", "calgary", "ottawa", "remote", "hybrid", "on-site", "ontario", "canada", "usa", "bc", "ab", "qc"}
+	for _, word := range locationWords {
+		if strings.Contains(textLower, word) {
+			return true
+		}
+	}
+
+	// Date patterns
+	if strings.Contains(textLower, "applied on") || strings.Contains(textLower, "2024") || strings.Contains(textLower, "2025") {
+		return true
+	}
+
+	// Check if it contains only location-like patterns (City, Province format)
+	if strings.Contains(text, ",") && len(strings.Split(text, ",")) == 2 {
+		return true
+	}
+
+	return false
 }
