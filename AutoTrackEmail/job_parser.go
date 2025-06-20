@@ -141,7 +141,8 @@ func extractTitleFromSubject(subject string) string {
 
 	// Look for common job titles
 	commonTitles := []string{
-		"software engineer", "developer", "programmer", "analyst",
+		"software engineer", "software developer", "backend developer", "developer",
+		"programmer", "business analyst", "analyst",
 		"manager", "director", "consultant", "specialist", "coordinator",
 		"associate", "senior", "junior", "intern", "architect",
 	}
