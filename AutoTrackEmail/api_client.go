@@ -51,6 +51,8 @@ func sendJobToAPI(job Job) {
 
 	//handle response
 	switch resp.StatusCode {
+	case http.StatusOK:
+		log.Printf("✓ Job saved successfully: %s at %s", job.Title, job.Company)
 	case http.StatusCreated:
 		log.Printf("✓ Job saved successfully: %s at %s", job.Title, job.Company)
 	case http.StatusConflict:
