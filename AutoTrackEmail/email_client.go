@@ -69,10 +69,10 @@ func FetchUnreadEmails(c *client.Client) ([]EmailData, error) {
 	//Fetch messages
 	section := &imap.BodySectionName{}
 	messages := make(chan *imap.Message, 10)
-	err = c.Fetch(seqSet, []imap.FetchItem{imap.FetchEnvelope, section.FetchItem()}, messages)
-	if err != nil {
-		log.Fatal(err)
-	}
+	done := make(chan error, 1)
+	go func() {
+		done <- c.Fetch(seqSet, []imap.FetchItem{imap.FetchEnvelope, section.FetchItem()}, messages)
+	}()
 
 	var emails []EmailData
 
@@ -117,6 +117,11 @@ func FetchUnreadEmails(c *client.Client) ([]EmailData, error) {
 		}
 	}
 
+	// Wait for fetch to complete
+	if err := <-done; err != nil {
+		return nil, err
+	}
+
 	return emails, nil
 }
 
@@ -138,6 +143,28 @@ func isJobRelatedEmail(subject string) bool {
 // parse Gmail date format (if change provider need to be changed)
 // Gmail uses RFC 2822 format: "Mon, 02 Jan 2006 15:04:05 -0700"
 func parseEmailDate(dateStr string) (time.Time, error) {
+
+	// Remove any timezone abbreviation in parentheses at the end
+	if idx := strings.Index(dateStr, " ("); idx != -1 {
+		dateStr = dateStr[:idx]
+	}
+
+	// Try multiple common email date formats
+	formats := []string{
+		"Mon, 02 Jan 2006 15:04:05 -0700", // Standard RFC 2822
+		"Mon, 2 Jan 2006 15:04:05 -0700",  // Single digit day
+		"2 Jan 2006 15:04:05 -0700",       // Without day of week
+		"Mon, 02 Jan 2006 15:04:05 MST",   // With timezone name
+		"Mon, 2 Jan 2006 15:04:05 MST",    // Single digit day + timezone name
+	}
+
+	for _, format := range formats {
+		if date, err := time.Parse(format, dateStr); err == nil {
+			return date, nil
+		}
+	}
+
+	// If all parsing attempts fail, return the error from the standard format
 	return time.Parse("Mon, 02 Jan 2006 15:04:05 -0700", dateStr)
 }
 
