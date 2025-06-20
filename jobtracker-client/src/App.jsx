@@ -125,7 +125,7 @@ const JobTracker = () => {
       company: job.company,
       title: job.title,
       status: job.status,
-      applied_date: job.applied_date || job.appled_date || '', // Handle both field names
+      applied_date: job.applied_date || '',
       notes: job.notes
     });
     setIsModalOpen(true);
@@ -247,10 +247,10 @@ const JobTracker = () => {
                 </div>
               </div>
 
-              {(job.applied_date || job.appled_date) && (
+              {(job.applied_date) && (
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
                   <Calendar className="h-4 w-4" />
-                  <span>Applied: {job.applied_date || job.appled_date}</span>
+                  <span>Applied: {job.applied_date}</span>
                 </div>
               )}
 
