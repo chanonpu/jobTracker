@@ -21,7 +21,7 @@ func CreateJobs(c *gin.Context) {
 		return
 	}
 	config.DB.Create(&job)
-	c.JSON(http.StatusOK, job)
+	c.JSON(http.StatusCreated, job)
 }
 
 func UpdateJobs(c *gin.Context) {
